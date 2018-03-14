@@ -1,0 +1,6 @@
+---
+- hosts: ali-socket5
+  become: true
+  gather_facts: no
+  roles:
+    - role: "socket5"

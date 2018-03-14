@@ -1,0 +1,11 @@
+---
+# defaults file for socket5
+ss5_version: 3.8.9
+ss5_tar_file_name: "ss5-{{ss5_version}}-8.tar.gz"
+ss5_port: 1080
+#### socket5用户列表
+ssh5_user:
+  - name: aaabbb
+    password: 111
+  - name: test
+    password: 222

@@ -1,0 +1,110 @@
+---
+# tasks file for socket5
+- name: instal dependencies
+  yum:
+    name: "{{item}}"
+  with_items:
+    - gcc
+    - gcc-c++
+    - automake
+    - make
+    - pam-devel
+    - openldap-devel
+    - cyrus-sasl-devel
+    - openssl-devel
+  tags:
+    - ss5
+
+- name: copy ss5
+  copy:
+    src: "{{jenkins_agent_tools_store}}/{{ss5_tar_file_name}}"
+    dest: "/tmp"
+  tags:
+    - ss5
+- name: unarchive
+  unarchive:
+    src: "/tmp/{{ss5_tar_file_name}}"
+    dest: "/app"
+    owner: "{{common_deploy_user_name}}"
+    group: "{{cloud_user_group}}"
+    creates: "{{ansible_unarchive_creates_folder}}/.ss5_tar"
+  tags:
+    - ss5
+
+- stat:
+    path: "{{ansible_unarchive_creates_folder}}/.ss5_compile"
+  register: __ss5_compile
+
+- name: "compile ss5 {{__ss5_compile}}"
+  shell: "{{item}}"
+  become: true
+  args:
+    chdir: "/app/ss5-{{ss5_version}}"
+  when: not __ss5_compile.stat.exists
+  with_items:
+    - ./configure
+    - make
+    - make install
+  tags:
+    - ss5
+
+- name: "mkdir {{ansible_unarchive_creates_folder}}"
+  file:
+    path: "{{ansible_unarchive_creates_folder}}/"
+    state: directory
+
+- name: touch
+  file:
+    path: "{{ansible_unarchive_creates_folder}}/.ss5_compile"
+    state: touch
+
+
+- name: set port
+  lineinfile:
+    path: "/etc/sysconfig/ss5"
+    line: 'SS5_OPTS=" -u root -b 0.0.0.0:10800"'
+  tags:
+    - ss5
+
+- name: lineinfile
+  lineinfile:
+    path: "/etc/opt/ss5/ss5.conf"
+    line: "{{item}}"
+  with_items:
+    - "auth    0.0.0.0/0               -               u"
+    - "permit u        0.0.0.0/0       -       0.0.0.0/0       -       -       -       -       -"
+  tags:
+    - ss5
+- name: set password
+  template:
+    src: "ss5.passwd.j2"
+    dest: "/etc/opt/ss5/ss5.passwd"
+    force: yes
+    owner: root
+    group: root
+    mode: "ug=rw"
+  notify:
+    - restart ss5 service
+  tags:
+    - ss5
+
+- file:
+    path: "/etc/rc.d/init.d/ss5"
+    mode: "ug=rx"
+  tags:
+    - ss5
+
+- meta: flush_handlers
+
+- name: service ss5 start
+  service:
+    name: ss5
+    state: started
+    enabled: yes
+  tags:
+    - ss5
+
+- wait_for:
+    port: "{{ss5_port}}"
+  tags:
+    - ss5

@@ -1,0 +1,7 @@
+---
+# handlers file for socket5
+- name: restart ss5 service
+  service:
+    name: ss5
+    state: restarted
+    enabled: true
